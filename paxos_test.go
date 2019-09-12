@@ -56,7 +56,7 @@ func TestSingleProser(t *testing.T) {
 		go acceptors[index].run()
 	}
 
-	// 启动learner ，accept 消息。
+	// 启动learner ，根据多个accept 消息，确认最后被接收的值。
 	//Create learner and learner will wait until reach majority.
 	learner := NewLearner(200, network.getNodeNetwork(200), 1, 2, 3)
 	learnValue := learner.run()
