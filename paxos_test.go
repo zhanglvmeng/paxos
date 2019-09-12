@@ -8,6 +8,7 @@ import (
 
 func TestBasicNetwork(t *testing.T) {
 	log.Println("TestBasicNetowk........................")
+	// 给每个节点构造一个接收消息的chan
 	nt := CreateNetwork(1, 3, 5, 2, 4)
 	go func() {
 		nt.recevFrom(5)
@@ -47,12 +48,15 @@ func TestSingleProser(t *testing.T) {
 	proposer := NewProposer(100, "value1", network.getNodeNetwork(100), 1, 2, 3)
 
 	//Run proposer and acceptors
+	// proposer 两阶段执行。
 	go proposer.run()
 
+	// 启动 多个 acceptors。
 	for index, _ := range acceptors {
 		go acceptors[index].run()
 	}
 
+	// 启动learner ，accept 消息。
 	//Create learner and learner will wait until reach majority.
 	learner := NewLearner(200, network.getNodeNetwork(200), 1, 2, 3)
 	learnValue := learner.run()

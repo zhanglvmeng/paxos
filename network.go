@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+/*
+ 针对每个节点，构造一个接收消息的chan , 类型为message。
+ */
 func CreateNetwork(nodes ...int) *network {
 	nt := network{recvQueue: make(map[int]chan message, 0)}
 

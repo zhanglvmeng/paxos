@@ -25,16 +25,20 @@ type proposer struct {
 func (p *proposer) run() {
 	log.Println("Proposer start run... val:", p.proposeVal)
 	//Stage1: Proposor send prepare message to acceptor to reach accept from majority.
+	// 阶段一： 只有收到prepare回复消息 promise 的条数 大于acceptor 数量的二分之一，才可以进入第二阶段。
 	for !p.majorityReached() {
 		log.Println("[Proposer:Prepare]")
+		// 构造prepare消息： 给尽量多的acceptor发送消息。测试时发送大于1/2 acceptors数量即可。在真实环境中，最好是越多越好，
 		outMsgs := p.prepare()
 		log.Println("[Proposer: prepare ", len(outMsgs), "msg")
+		// 发送prepare消息。
 		for _, msg := range outMsgs {
 			p.nt.send(msg)
 			log.Println("[Proposer: send", msg)
 		}
 
 		log.Println("[Proposer: prepare recev..")
+		// 接收消息。
 		m := p.nt.recev()
 		if m == nil {
 			log.Println("[Proposer: no msg... ")
@@ -43,7 +47,9 @@ func (p *proposer) run() {
 		log.Println("[Proposer: recev", m)
 		switch m.typ {
 		case Promise:
+			// 这儿是对prepare的响应消息 promise.
 			log.Println(" proposer recev a promise from ", m.from)
+			// 校验消息。保证promise 获取最新的响应。
 			p.checkRecvPromise(*m)
 		default:
 			panic("Unsupport message.")
@@ -52,8 +58,11 @@ func (p *proposer) run() {
 
 	log.Println("[Proposer:Propose]")
 	//Stage2: Proposor send propose value to acceptor to learn.
+	// 阶段2 在阶段1 的基础之上，表明已经得到了半数以上的响应。
 	log.Println("Proposor propose seq:", p.getProposeNum(), " value:", p.proposeVal)
+	// 组装propose 消息。
 	proposeMsgs := p.propose()
+	// 发送 propose 消息。
 	for _, msg := range proposeMsgs {
 		p.nt.send(msg)
 	}
@@ -74,6 +83,7 @@ func (p *proposer) propose() []message {
 			msgList = append(msgList, msg)
 		}
 		sendMsgCount++
+		// 注意，这儿是为了测试，只要满足给大于acceptors 总数1/2 以上的acceptor 发送消息即可。 实际在真实环境中，应该尽量给所有的acceptor 发送prepare消息。
 		if sendMsgCount > p.majority() {
 			break
 		}
@@ -95,6 +105,7 @@ func (p *proposer) prepare() []message {
 		msg := message{from: p.id, to: acepId, typ: Prepare, seq: p.getProposeNum(), val: p.proposeVal}
 		msgList = append(msgList, msg)
 		sendMsgCount++
+		// 注意，这儿是为了测试，只要满足给大于acceptors 总数1/2 以上的acceptor 发送消息即可。 实际在真实环境中，应该尽量给所有的acceptor 发送prepare消息。
 		if sendMsgCount > p.majority() {
 			break
 		}
@@ -103,12 +114,15 @@ func (p *proposer) prepare() []message {
 }
 
 func (p *proposer) checkRecvPromise(promise message) {
+	// 找到这个acceptor 之前发的promise消息。
 	previousPromise := p.acceptors[promise.from]
 	log.Println(" prevMsg:", previousPromise, " promiseMsg:", promise)
 	log.Println(previousPromise.getProposeSeq(), promise.getProposeSeq())
+	// 保证了接收自同一个acceptor的消息有序。
 	if previousPromise.getProposeSeq() < promise.getProposeSeq() {
 		log.Println("Proposor:", p.id, " get new promise:", promise)
 		p.acceptors[promise.from] = promise
+		// 如果"当前acceptor的promose 消息编号"  大于 "proposer 接收到的所有其他acceptor 的promose编号"， 则使用当前acceptor的信息覆盖为proposer 信息。
 		if promise.getProposeSeq() > p.getProposeNum() {
 			p.proposeNum = promise.getProposeSeq()
 			p.proposeVal = promise.getProposeVal()

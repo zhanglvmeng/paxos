@@ -29,6 +29,7 @@ func (l *learner) run() string {
 
 		log.Println("Learner: recev msg:", *m)
 		l.handleRecevAccept(*m)
+		// acceptor发来的消息，针对每一个proposalNum 消息，只有当"收到同一 proposalNum 消息数量 大于 learner 消息总数1/2以上"时，该proposalNum 的 消息才会被接收。
 		learnMsg, isLearn := l.chosen()
 		if isLearn == false {
 			continue
